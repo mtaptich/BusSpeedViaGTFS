@@ -47,9 +47,9 @@ var inputdata = [], downloaddata = [];
 
 var update = (function(){
   
-  var margin = {top: 20, right: 80, bottom: 30, left: 70},
+  var margin = {top: 20, right: 80, bottom: 30, left: 90},
       width = 900 - margin.left - margin.right,
-      height = 500 - margin.top - margin.bottom;
+      height = 400 - margin.top - margin.bottom;
 
   var x = d3.scale.linear()
       .range([0,width]);
@@ -153,9 +153,9 @@ var update = (function(){
 })();
   
 var chart = (function(){
-  var margin = {top: 20, right: 80, bottom: 30, left: 70},
+  var margin = {top: 20, right: 80, bottom: 30, left: 90},
       width = 900 - margin.left - margin.right,
-      height = 500 - margin.top - margin.bottom;
+      height = 400 - margin.top - margin.bottom;
 
 
   var parsetime = d3.time.format("%H:%M:%S").parse;
