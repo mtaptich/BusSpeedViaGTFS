@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<link href="font-awesome/css/font-awesome.min.css" rel="stylesheet">
+<link href="css/bootstrap.css" rel="stylesheet">
+<style>
+
+svg {
+  font: 18px;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+  stroke-width: 2px;
+}
+
+
+.line {
+  fill: none;
+  stroke-width: 2px;
+  opacity: 0.5;
+}
+
+.grid{
+  fill: none;
+  stroke: #eee;
+  stroke-width: 0.5px;
+  stroke-dasharray: 10,5;
+}
+
+#slider{
+  width: 400px;
+}
+
+</style>
+<body>
+<div id="interface"></div>
+<div>
+  <input id="slider" type="range" name="points" min="6" max="24" step="1" value="6" onchange="slider(document.getElementById('slider').value);"> </input>
+</div>
+<script src="http://d3js.org/d3.v3.js"></script>
+<script>
+
+var inputdata = [], downloaddata = [];
+
+var update = (function(){
+  
+  var margin = {top: 20, right: 80, bottom: 30, left: 70},
+      width = 900 - margin.left - margin.right,
+      height = 500 - margin.top - margin.bottom;
+
+  var x = d3.scale.linear()
+      .range([0,width]);
+      
+  var y = d3.scale.linear()
+      .range([height,0]);
+
+  var color = d3.scale.category10();
+
+  var xAxis = d3.svg.axis()
+      .scale(x)
+      .orient("bottom");
+
+  var yAxis = d3.svg.axis()
+      .scale(y)
+      .orient("left");
+
+  var gridy = d3.svg.axis()
+    .scale(y)
+    .orient("left")
+    .tickSize(-width, 0, 0)
+    .tickFormat("")
+
+  var gridx = d3.svg.axis()
+    .scale(x)
+    .orient("bottom")
+    .tickSize(height, 0, 0)
+    .tickFormat("")
+
+  var line = d3.svg.line()
+      .interpolate("basis")
+      .x(function(d) { return x(d.trip_time); })
+      .y(function(d) { return y(d.distance); });
+
+  var svg = d3.select("#interface").append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  x.domain([0,4000]);
+  y.domain([0,14000]);
+
+  svg.append("g")
+      .attr("class", "grid")
+      .call(gridy)
+
+  svg.append("g")
+      .attr("class", "grid")
+      .call(gridx)
+                                                                                     
+  svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis)
+      .append("text")
+      .attr("x", width)
+      .attr("y", -6)
+      .style("text-anchor", "end")
+      .text("Seconds");
+
+  svg.append("g")
+        .attr("class", "y axis")
+        .call(yAxis)
+      .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", -60)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("Distance along Route, meters");
+
+  
+  function update(screenVal){
+    d3.selectAll(".line").remove();
+    d3.selectAll(".timetext").remove();
+
+    svg.append("text")
+      .attr("class", "timetext")
+      .attr("x", 50)
+      .attr("y", 50)
+      .text((+screenVal-1)+" - "+screenVal+ " hours")
+      .style("font-size", 25)
+
+      color.domain(d3.keys(inputdata[0]).filter(function(key) { return key == "trip_id"; }));
+      data = inputdata.filter(function(d){ return +d.time_bin == screenVal ; })
+
+      data = d3.nest().key(function(d) { return d.trip_id; }).entries(data);
+
+      var cities = svg.selectAll(".trip_id")
+          .data(data, function(d) { return d.key; })
+        .enter().append("g")
+          .attr("class", "jean");
+
+      cities.append("path")
+          .attr("class", "line")
+          .attr("d", function(d) { return line(d.values); })
+          .style("stroke", function(d) { return color(d.values[0].time_bin); })
+             
+  }
+  return update
+})();
+  
+var chart = (function(){
+  var margin = {top: 20, right: 80, bottom: 30, left: 70},
+      width = 900 - margin.left - margin.right,
+      height = 500 - margin.top - margin.bottom;
+
+
+  var parsetime = d3.time.format("%H:%M:%S").parse;
+  var parseminutes = d3.time.format("%S").parse;
+
+  var x = d3.scale.linear()
+      .range([0,width]);
+      
+  var y = d3.scale.linear()
+      .range([height,0]);
+
+  var speedy = d3.scale.linear()
+      .range([height,0]);
+
+  var distance = d3.scale.linear()
+      .range([0,width]);
+
+  var color = d3.scale.category10();
+
+  var xAxis = d3.svg.axis()
+      .scale(distance)
+      .orient("bottom");
+
+  var yAxis = d3.svg.axis()
+      .scale(speedy)
+      .orient("left");
+
+  var gridy = d3.svg.axis()
+    .scale(y)
+    .orient("left")
+    .tickSize(-width, 0, 0)
+    .tickFormat("")
+
+  var gridx = d3.svg.axis()
+    .scale(x)
+    .orient("bottom")
+    .tickSize(height, 0, 0)
+    .tickFormat("")
+
+  var line = d3.svg.line()
+      .interpolate("basis")
+      .x(function(d) { return distance(d.dist); })
+      .y(function(d) { return speedy(d.y); });
+
+  var svg = d3.select("#interface").append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  x.domain([0,4000]);
+  y.domain([0,14000]);
+  speedy.domain([0,30]);
+  distance.domain([0,14000]);
+
+
+  svg.append("g")
+      .attr("class", "grid")
+      .call(gridy)
+
+  svg.append("g")
+      .attr("class", "grid")
+      .call(gridx)
+                                                                                     
+  svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis)
+      .append("text")
+        .attr("x", width)
+        .attr("y", -6)
+        .style("text-anchor", "end")
+        .text("Distance along Route, meters");
+
+  svg.append("g")
+        .attr("class", "y axis")
+        .call(yAxis)
+      .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", -60)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("Vehicle Speed, KPH");
+
+  function speed(screenVal){
+    d3.selectAll(".speedbuses").remove()
+
+    svg.append("text")
+      .attr("class", "timetext")
+      .attr("x", 50)
+      .attr("y", 50)
+      .text((+screenVal-1)+" - "+screenVal+ " hours")
+      .style("font-size", 25)
+
+    var buses = []
+
+    d3.selectAll(".line").each(function(d, i){
+      var path = d3.select(this).node()
+      var d_out = [];
+      buses.push(d3.range(0,path.getTotalLength() - 10, 10).map(function(p){
+
+        var point1 = path.getPointAtLength(p)
+        var point2 = path.getPointAtLength(p+10)
+
+        var x_time = x.invert(point1.x);
+        var y_speed = ( (y.invert(point2.y)- y.invert(point1.y) ) /( (x.invert(point2.x)-x.invert(point1.x) ) ))*3.6;
+        var y_distance = y.invert(point2.y);
+
+        d_out.push([i, y_distance, y_speed])
+        return {x: x_time, y: y_speed, dist: y_distance}
+      }))
+      downloaddata.push(d_out)
+
+    })
+
+    var cities = svg.selectAll(".speedid")
+        .data(buses)
+      .enter().append("g")
+        .attr("class", "speedbuses");
+
+    cities.append("path")
+        .attr("class", "speedline")
+        .attr("d", function(d) { return line(d); })
+        .style("stroke", function(d) { return "#000"; })
+        .style("fill", "none")                   
+  }
+  return speed
+})()
+
+var slider = function(screenVal){
+  downloaddata = [];
+  update(screenVal)
+  chart(screenVal)
+  //download(screenVal,downloaddata)
+}
+
+var download = function(screenVal,downloaddata){
+  var date = +new Date;
+  var csvContent = "data:text/csv;charset=utf-8,";
+  downloaddata.unshift(["Link_id,distance(m),speed(KPH)"])
+  downloaddata.forEach(function(infoArray, index){
+     dataString = infoArray.join("\n");
+     csvContent += dataString+ "\n";
+  }); 
+  
+  var link = document.createElement('a');
+  var blob = new Blob([csvContent],{type: 'text/csv;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  link.href = url;
+  link.setAttribute('download', "speed_"+(+screenVal-1)+"-"+screenVal+ " hours"+'.csv');
+  link.click();
+
+}
+
+d3.csv("data/GEARY38_ArrivalsAtStops_small.csv", function(error, j) {
+      inputdata = j
+      
+      var parsetime = d3.time.format("%H:%M:%S").parse;
+      var parseminutes = d3.time.format("%S").parse;
+      // first we need to corerce the data into the right formats
+      inputdata = inputdata.map( function (d) { 
+        return { 
+          trip_id: d.trip_id,
+          arrival_time: parsetime(d.arrival_time),
+          distance: +d.distance-560.852971,
+          trip_time: +d.trip_time,
+          time_bin: d.time_bin
+
+        }; 
+      });   
+      
+      // then we need to nest the data on trip_id since we want to only draw one
+      // line per trip_id
+
+  slider("6")
+});  
+
+
+</script>
+</body>
